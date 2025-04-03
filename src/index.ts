@@ -1,10 +1,14 @@
 import { Hono } from "hono";
+import { sign } from "hono/jwt";
 import { PrismaClient } from "@prisma/client/edge";
 import { withAccelerate } from "@prisma/extension-accelerate";
+import { userRoutes } from "./routes/user";
+import { blogRoutes } from "./routes/blog";
 
 const app = new Hono<{
   Bindings: {
     DATABASE_URL: string;
+    JWT_SECRET: string;
   };
 }>();
 
@@ -15,26 +19,22 @@ app.get("/", (c) => {
   return c.text("Hello Hono!");
 });
 
-app.post("/api/v1/user/signin", async (c) => {
-  const body = await c.req.json();
-  return c.text("Hello Hono!");
-});
-app.post("/api/v1/user/signup", (c) => {
-  return c.text("Hello Hono!");
-});
-app.post("/api/v1/blog", (c) => {
-  return c.text("Hello Hono!");
-});
+app.route("/api/v1/user", userRoutes);
+app.route("/api/v1/blog", blogRoutes);
 
-app.put("/api/v1/blog", (c) => {
-  return c.text("Hello Hono!");
-});
-
-app.get("/api/v1/blog", (c) => {
-  return c.text("Hello Hono id!");
-});
-app.get("/api/v1/blog/bulk", (c) => {
-  return c.text("Hello Hono all!");
+app.get("/api/v1/user", async (c) => {
+  const prisma = new PrismaClient({
+    datasourceUrl: c.env.DATABASE_URL,
+  }).$extends(withAccelerate());
+  try {
+    const users = await prisma.user.findMany();
+    console.log(users);
+    return c.json({
+      users,
+    });
+  } catch (error) {
+    return c.text("Invalid!");
+  }
 });
 
 export default app;
